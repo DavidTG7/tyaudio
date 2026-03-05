@@ -14,6 +14,21 @@ import subprocess
 from flask import Flask, request, jsonify, send_file, render_template_string
 import yt_dlp
 
+# Asegurar que ffmpeg esté disponible — Railway lo instala vía nixpacks
+# pero también intentamos con yt-dlp's ffmpeg como fallback
+def get_ffmpeg_path():
+    import shutil as sh
+    ffmpeg = sh.which("ffmpeg")
+    if ffmpeg:
+        return ffmpeg
+    # Intentar rutas comunes en Nix/Railway
+    for path in ["/nix/store", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"]:
+        if os.path.exists(path) and "ffmpeg" in path:
+            return path
+    return "ffmpeg"  # fallback, esperar que esté en PATH
+
+FFMPEG_PATH = get_ffmpeg_path()
+
 app = Flask(__name__)
 
 DOWNLOAD_FOLDER = "downloads"
@@ -146,12 +161,13 @@ def download_raw_video(url, job_id, tipo="audio"):
     fmt = "bestaudio/best" if tipo == "audio" else "bestvideo+bestaudio/best"
 
     ydl_opts = {
-        "format":     fmt,
-        "outtmpl":    out_template,
-        "noplaylist": True,
-        "quiet":      True,
-        "merge_output_format": "mkv",  # fusiona video+audio en un solo archivo
-        "progress_hooks": [progress_hook],
+        "format":           fmt,
+        "outtmpl":          out_template,
+        "noplaylist":       True,
+        "quiet":            True,
+        "merge_output_format": "mkv",
+        "ffmpeg_location":  os.path.dirname(FFMPEG_PATH) or None,
+        "progress_hooks":   [progress_hook],
     }
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
@@ -169,7 +185,7 @@ def cut_and_convert(raw_path, output_path, start, end, formato, calidad, job_id)
     os.makedirs(output_path, exist_ok=True)
     out_file = os.path.join(output_path, f"output.{formato}")
     cmd = [
-        "ffmpeg", "-y",
+        FFMPEG_PATH, "-y",
         "-ss", str(start), "-t", str(end - start),
         "-i", raw_path, "-vn",
         "-ab", calidad + "k", "-f", formato,
@@ -203,7 +219,7 @@ def cut_video(raw_path, output_path, start, end, resolucion, fmt_video, orientac
         vf = f"scale=-2:{height},pad=ceil(iw/2)*2:ceil(ih/2)*2"
 
     cmd = [
-        "ffmpeg", "-y",
+        FFMPEG_PATH, "-y",
         "-ss", str(start), "-t", str(duration),
         "-i", raw_path,
         "-vf", vf,
