@@ -15,18 +15,25 @@ import subprocess
 from flask import Flask, request, jsonify, send_file, render_template_string
 import yt_dlp
 
-# Asegurar que ffmpeg esté disponible — Railway lo instala vía nixpacks
-# pero también intentamos con yt-dlp's ffmpeg como fallback
+# Obtener ffmpeg — usa imageio-ffmpeg que trae su propio binario
 def get_ffmpeg_path():
     import shutil as sh
+    # 1. Buscar en PATH del sistema
     ffmpeg = sh.which("ffmpeg")
     if ffmpeg:
+        print(f"✅ ffmpeg encontrado en PATH: {ffmpeg}")
         return ffmpeg
-    # Intentar rutas comunes en Nix/Railway
-    for path in ["/nix/store", "/usr/bin/ffmpeg", "/usr/local/bin/ffmpeg"]:
-        if os.path.exists(path) and "ffmpeg" in path:
-            return path
-    return "ffmpeg"  # fallback, esperar que esté en PATH
+    # 2. Usar imageio-ffmpeg (binario empaquetado con pip)
+    try:
+        import imageio_ffmpeg
+        ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
+        print(f"✅ ffmpeg via imageio: {ffmpeg}")
+        return ffmpeg
+    except Exception as e:
+        print(f"⚠️  imageio-ffmpeg no disponible: {e}")
+    # 3. Fallback
+    print("⚠️  ffmpeg no encontrado, usando 'ffmpeg' como fallback")
+    return "ffmpeg"
 
 FFMPEG_PATH = get_ffmpeg_path()
 
