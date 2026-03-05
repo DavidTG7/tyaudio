@@ -201,11 +201,13 @@ def cut_and_convert(raw_path, output_path, start, end, formato, calidad, job_id)
     """Recorta y convierte a audio."""
     os.makedirs(output_path, exist_ok=True)
     out_file = os.path.join(output_path, f"output.{formato}")
+    # m4a no es un nombre de formato válido para ffmpeg, usar 'ipod' como contenedor
+    ffmpeg_fmt = "ipod" if formato == "m4a" else formato
     cmd = [
         FFMPEG_PATH, "-y",
         "-ss", str(start), "-t", str(end - start),
         "-i", raw_path, "-vn",
-        "-ab", calidad + "k", "-f", formato,
+        "-ab", calidad + "k", "-f", ffmpeg_fmt,
         out_file
     ]
     result = subprocess.run(cmd, capture_output=True, text=True)
@@ -827,7 +829,7 @@ HTML = """<!DOCTYPE html>
     </div>
   </div>
 
-  <div class="footer">Developed by <span>DavidTG</span></div>
+  <div class="footer">Developed by <span>DavidTG</span> &nbsp;·&nbsp; v1.0.0</div>
 
   <script>
     let videoDuration = 0;
