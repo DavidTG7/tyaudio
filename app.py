@@ -165,18 +165,21 @@ def download_raw_video(url, job_id, tipo="audio"):
             download_jobs[job_id]["state"]   = "cutting"
             download_jobs[job_id]["percent"] = 88
 
-    # Audio: solo pista de audio. Video: mejor video + audio combinados
-    fmt = "bestaudio/best" if tipo == "audio" else "bestvideo+bestaudio/best"
+    # Audio: solo pista de audio. Video: intentar formato ya combinado primero, luego merge
+    fmt = "bestaudio/best" if tipo == "audio" else "bestvideo[ext=mp4]+bestaudio[ext=m4a]/best[ext=mp4]/best"
+
+    ffmpeg_dir = os.path.dirname(FFMPEG_PATH) if FFMPEG_PATH != "ffmpeg" else None
 
     ydl_opts = {
-        "format":           fmt,
-        "outtmpl":          out_template,
-        "noplaylist":       True,
-        "quiet":            True,
+        "format":              fmt,
+        "outtmpl":             out_template,
+        "noplaylist":          True,
+        "quiet":               True,
         "merge_output_format": "mkv",
-        "ffmpeg_location":  os.path.dirname(FFMPEG_PATH) or None,
-        "progress_hooks":   [progress_hook],
+        "progress_hooks":      [progress_hook],
     }
+    if ffmpeg_dir:
+        ydl_opts["ffmpeg_location"] = ffmpeg_dir
 
     with yt_dlp.YoutubeDL(ydl_opts) as ydl:
         ydl.download([url])
