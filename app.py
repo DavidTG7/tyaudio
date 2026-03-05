@@ -15,24 +15,29 @@ import subprocess
 from flask import Flask, request, jsonify, send_file, render_template_string
 import yt_dlp
 
-# Obtener ffmpeg — usa imageio-ffmpeg que trae su propio binario
+# Obtener ffmpeg y agregarlo al PATH para que yt-dlp también lo encuentre
 def get_ffmpeg_path():
     import shutil as sh
-    # 1. Buscar en PATH del sistema
+
+    # 1. Ya está en el PATH del sistema
     ffmpeg = sh.which("ffmpeg")
     if ffmpeg:
-        print(f"✅ ffmpeg encontrado en PATH: {ffmpeg}")
+        print(f"✅ ffmpeg en PATH: {ffmpeg}")
         return ffmpeg
-    # 2. Usar imageio-ffmpeg (binario empaquetado con pip)
+
+    # 2. Usar imageio-ffmpeg y agregarlo al PATH dinámicamente
     try:
         import imageio_ffmpeg
         ffmpeg = imageio_ffmpeg.get_ffmpeg_exe()
-        print(f"✅ ffmpeg via imageio: {ffmpeg}")
+        ffmpeg_dir = os.path.dirname(ffmpeg)
+        # Agregar al PATH para que yt-dlp lo encuentre
+        os.environ["PATH"] = ffmpeg_dir + os.pathsep + os.environ.get("PATH", "")
+        print(f"✅ ffmpeg via imageio agregado al PATH: {ffmpeg}")
         return ffmpeg
     except Exception as e:
         print(f"⚠️  imageio-ffmpeg no disponible: {e}")
-    # 3. Fallback
-    print("⚠️  ffmpeg no encontrado, usando 'ffmpeg' como fallback")
+
+    print("⚠️  ffmpeg no encontrado")
     return "ffmpeg"
 
 FFMPEG_PATH = get_ffmpeg_path()
